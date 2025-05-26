@@ -25,7 +25,9 @@ namespace GooglePlayGames
     /// <summary>
     /// Represents the Google Play Games local user.
     /// </summary>
+#pragma warning disable 0618 // Deprecated Unity APIs
     public class PlayGamesLocalUser : PlayGamesUserProfile, ILocalUser
+#pragma warning restore 0618
     {
         internal PlayGamesPlatform mPlatform;
 
@@ -67,9 +69,11 @@ namespace GooglePlayGames
         /// <summary>
         /// Synchronous version of friends, returns null until loaded.
         /// </summary>
+#pragma warning disable 0618 // Deprecated Unity APIs
         public IUserProfile[] friends
         {
             get { return mPlatform.GetFriends(); }
+#pragma warning restore 0618
         }
 
         /// <summary>
@@ -157,9 +161,11 @@ namespace GooglePlayGames
         /// Gets the local user's state. This is always <c>UserState.Online</c> for
         /// the local user.
         /// </summary>
+#pragma warning disable 0618 // Deprecated Unity APIs
         public new UserState state
         {
             get { return UserState.Online; }
+#pragma warning restore 0618
         }
 
 

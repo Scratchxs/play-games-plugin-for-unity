@@ -146,7 +146,9 @@ namespace GooglePlayGames.BasicApi
       /// </summary>
       /// <param name="userIds">User identifiers.</param>
       /// <param name="callback">Callback.</param>
+#pragma warning disable 0618 // Deprecated Unity APIs
       void LoadUsers(string[] userIds, Action<IUserProfile[]> callback);
+#pragma warning restore 0618
 
       /// <summary>
       /// Loads the achievements for the current signed in user and invokes
@@ -295,8 +297,10 @@ namespace GooglePlayGames.BasicApi
       /// <param name="callback">If non-null, the callback to invoke when the
       /// leaderboard is dismissed.
       /// </param>
+#pragma warning disable 0618 // Deprecated Unity APIs
       void ShowLeaderboardUI(string leaderboardId, LeaderboardTimeSpan span,
                              Action<UIStatus> callback);
+#pragma warning restore 0618
 
       /// <summary>
       /// Loads the score data for the given leaderboard.
@@ -311,9 +315,11 @@ namespace GooglePlayGames.BasicApi
       /// <param name="timeSpan">leaderboard timespan</param>
       /// <param name="callback">callback with the scores, and a page token.
       ///   The token can be used to load next/prev pages.</param>
+#pragma warning disable 0618 // Deprecated Unity APIs
       void LoadScores(string leaderboardId, LeaderboardStart start, int rowCount,
                       LeaderboardCollection collection, LeaderboardTimeSpan timeSpan,
                       Action<LeaderboardScoreData> callback);
+#pragma warning restore 0618
 
       /// <summary>
       /// Loads the more scores for the leaderboard.
@@ -369,7 +375,9 @@ namespace GooglePlayGames.BasicApi
       /// <returns>The events client.</returns>
       Events.IEventsClient GetEventsClient();
 
+#pragma warning disable 0618 // Deprecated Unity APIs
       IUserProfile[] GetFriends();
+#pragma warning restore 0618
     }
 }
 #endif

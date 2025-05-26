@@ -22,6 +22,7 @@ namespace GooglePlayGames.Editor
     using System.IO;
     using System.Xml;
     using UnityEditor;
+    using UnityEditor.Build; // Added for NamedBuildTarget
     using UnityEngine;
 
     /// <summary>
@@ -357,7 +358,7 @@ namespace GooglePlayGames.Editor
             string currentId;
 #if UNITY_5_6_OR_NEWER
             currentId = PlayerSettings.GetApplicationIdentifier(
-                BuildTargetGroup.Android);
+                NamedBuildTarget.Android);
 #else
             currentId = PlayerSettings.bundleIdentifier;
 #endif
@@ -368,7 +369,7 @@ namespace GooglePlayGames.Editor
                 {
 #if UNITY_5_6_OR_NEWER
                     PlayerSettings.SetApplicationIdentifier(
-                        BuildTargetGroup.Android, packageName);
+                        NamedBuildTarget.Android, packageName);
 #else
                     PlayerSettings.bundleIdentifier = packageName;
 #endif
@@ -386,7 +387,7 @@ namespace GooglePlayGames.Editor
                     {
 #if UNITY_5_6_OR_NEWER
                         PlayerSettings.SetApplicationIdentifier(
-                            BuildTargetGroup.Android, packageName);
+                            NamedBuildTarget.Android, packageName);
 #else
                         PlayerSettings.bundleIdentifier = packageName;
 #endif

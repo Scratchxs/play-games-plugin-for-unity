@@ -32,7 +32,9 @@ namespace GooglePlayGames
     /// this is only used as a base class of <see cref="PlayGamesLocalUser" />
     /// and should not be used directly.
     /// </summary>
+#pragma warning disable 0618 // Deprecated Unity APIs
     public class PlayGamesUserProfile : IUserProfile
+#pragma warning restore 0618
     {
         private string mDisplayName;
         private string mPlayerId;
@@ -99,9 +101,11 @@ namespace GooglePlayGames
             get { return mIsFriend; }
         }
 
+#pragma warning disable 0618 // Deprecated Unity APIs
         public UserState state
         {
             get { return UserState.Online; }
+#pragma warning restore 0618
         }
 
         public Texture2D image

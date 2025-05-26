@@ -33,7 +33,9 @@ namespace GooglePlayGames.BasicApi
         private ResponseStatus mStatus;
         private ulong mApproxCount;
         private string mTitle;
+#pragma warning disable 0618 // Deprecated Unity APIs
         private IScore mPlayerScore;
+#pragma warning restore 0618
         private ScorePageToken mPrevPage;
         private ScorePageToken mNextPage;
         private List<PlayGamesScore> mScores = new List<PlayGamesScore>();
@@ -86,14 +88,18 @@ namespace GooglePlayGames.BasicApi
             internal set { mId = value; }
         }
 
+#pragma warning disable 0618 // Deprecated Unity APIs
         public IScore PlayerScore
+#pragma warning restore 0618
         {
             get { return mPlayerScore; }
 
             internal set { mPlayerScore = value; }
         }
 
+#pragma warning disable 0618 // Deprecated Unity APIs
         public IScore[] Scores
+#pragma warning restore 0618
         {
             get { return mScores.ToArray(); }
         }

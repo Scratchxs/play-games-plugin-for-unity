@@ -96,7 +96,9 @@ namespace GooglePlayGames.BasicApi
             return null;
         }
 
+#pragma warning disable 0618 // Deprecated Unity APIs
         public void LoadUsers(string[] userIds, Action<IUserProfile[]> callback)
+#pragma warning restore 0618
         {
             LogUsage();
             if (callback != null)
@@ -204,10 +206,12 @@ namespace GooglePlayGames.BasicApi
           }
         }
 
+#pragma warning disable 0618 // Deprecated Unity APIs
         public void ShowLeaderboardUI(
             string leaderboardId,
             LeaderboardTimeSpan span,
             Action<UIStatus> callback)
+#pragma warning restore 0618
         {
             LogUsage();
             if (callback != null)
@@ -221,6 +225,7 @@ namespace GooglePlayGames.BasicApi
             return 25;
         }
 
+#pragma warning disable 0618 // Deprecated Unity APIs
         public void LoadScores(
             string leaderboardId,
             LeaderboardStart start,
@@ -228,6 +233,7 @@ namespace GooglePlayGames.BasicApi
             LeaderboardCollection collection,
             LeaderboardTimeSpan timeSpan,
             Action<LeaderboardScoreData> callback)
+#pragma warning restore 0618
         {
             LogUsage();
             if (callback != null)
@@ -292,10 +298,14 @@ namespace GooglePlayGames.BasicApi
             callback(false);
         }
 
+#pragma warning disable 0618 // Deprecated Unity APIs
         public IUserProfile[] GetFriends()
+#pragma warning restore 0618
         {
             LogUsage();
+#pragma warning disable 0618 // Deprecated Unity APIs
             return new IUserProfile[0];
+#pragma warning restore 0618
         }
 
         private static void LogUsage()

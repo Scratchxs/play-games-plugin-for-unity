@@ -37,7 +37,9 @@ namespace GooglePlayGames
     /// implementation of the ISocialPlatform interface. Methods lacking an implementation
     /// or whose behavior is at variance with the standard are noted as such.
     /// </summary>
+#pragma warning disable 0618 // Deprecated Unity APIs
     public class PlayGamesPlatform : ISocialPlatform
+#pragma warning restore 0618
     {
         /// <summary>Singleton instance</summary>
         private static volatile PlayGamesPlatform sInstance = null;
@@ -155,7 +157,9 @@ namespace GooglePlayGames
         /// <returns>
         /// The local user.
         /// </returns>
+#pragma warning disable 0618 // Deprecated Unity APIs
         public ILocalUser localUser
+#pragma warning restore 0618
         {
             get { return mLocalUser; }
         }
@@ -214,9 +218,13 @@ namespace GooglePlayGames
         {
             GooglePlayGames.OurUtils.Logger.d("Activating PlayGamesPlatform.");
 
+#pragma warning disable 0618 // Deprecated Unity APIs
             Social.Active = PlayGamesPlatform.Instance;
+#pragma warning restore 0618
             GooglePlayGames.OurUtils.Logger.d(
+#pragma warning disable 0618 // Deprecated Unity APIs
                 "PlayGamesPlatform activated: " + Social.Active);
+#pragma warning restore 0618
             return PlayGamesPlatform.Instance;
         }
 
@@ -263,10 +271,12 @@ namespace GooglePlayGames
         /// <summary>
         ///  Provided for compatibility with ISocialPlatform.
         /// </summary>
-        /// <seealso cref="Authenticate(Action&lt;bool&gt;,bool)"/>
+        /// <seealso cref="Authenticate(Action<bool>,bool)"/>
         /// <param name="unused">Unused parameter for this implementation.</param>
         /// <param name="callback">Callback invoked when complete.</param>
+#pragma warning disable 0618 // Deprecated Unity APIs
         public void Authenticate(ILocalUser unused, Action<bool> callback)
+#pragma warning restore 0618
         {
             Authenticate(status => callback(status == SignInStatus.Success));
         }
@@ -274,10 +284,12 @@ namespace GooglePlayGames
         /// <summary>
         ///  Provided for compatibility with ISocialPlatform.
         /// </summary>
-        /// <seealso cref="Authenticate(Action&lt;bool&gt;,bool)"/>
+        /// <seealso cref="Authenticate(Action<bool>,bool)"/>
         /// <param name="unused">Unused parameter for this implementation.</param>
         /// <param name="callback">Callback invoked when complete.</param>
+#pragma warning disable 0618 // Deprecated Unity APIs
         public void Authenticate(ILocalUser unused, Action<bool, string> callback)
+#pragma warning restore 0618
         {
             Authenticate(status => callback(status == SignInStatus.Success, status.ToString()));
         }
@@ -352,13 +364,17 @@ namespace GooglePlayGames
         /// </summary>
         /// <param name="userIds">User identifiers.</param>
         /// <param name="callback">Callback invoked when complete.</param>
+#pragma warning disable 0618 // Deprecated Unity APIs
         public void LoadUsers(string[] userIds, Action<IUserProfile[]> callback)
+#pragma warning restore 0618
         {
             if (!IsAuthenticated())
             {
                 GooglePlayGames.OurUtils.Logger.e(
                     "GetUserId() can only be called after authentication.");
+#pragma warning disable 0618 // Deprecated Unity APIs
                 callback(new IUserProfile[0]);
+#pragma warning restore 0618
 
                 return;
             }
@@ -494,76 +510,93 @@ namespace GooglePlayGames
                 return;
             }
 
+            // figure out if it's incremental
+            bool isIncremental = false;
+            int curSteps = 0, totalSteps = 0;
+
             mClient.LoadAchievements(ach =>
             {
                 for (int i = 0; i < ach.Length; i++)
                 {
-                    if (ach[i].Id == achievementID)
+                    if (ach[i].Id != null && ach[i].Id.Equals(achievementID))
                     {
-                        if (ach[i].IsIncremental)
-                        {
-                            GooglePlayGames.OurUtils.Logger.d("Progress " + progress +
-                                                              " interpreted as incremental target (approximate).");
-
-                            if (progress >= 0.0 && progress <= 1.0)
-                            {
-                                // in a previous version, incremental progress was reported by using the range [0-1]
-                                GooglePlayGames.OurUtils.Logger.w(
-                                    "Progress " + progress +
-                                    " is less than or equal to 1. You might be trying to use values in the range of [0,1], while values are expected to be within the range [0,100]. If you are using the latter, you can safely ignore this message.");
-                            }
-
-                            mClient.SetStepsAtLeast(achievementID, progressToSteps(progress, ach[i].TotalSteps), callback);
-                        }
-                        else
-                        {
-                            if (progress >= 100)
-                            {
-                                // unlock it!
-                                GooglePlayGames.OurUtils.Logger.d("Progress " + progress + " interpreted as UNLOCK.");
-                                mClient.UnlockAchievement(achievementID, callback);
-                            }
-                            else
-                            {
-                                // not enough to unlock
-                                GooglePlayGames.OurUtils.Logger.d(
-                                    "Progress " + progress + " not enough to unlock non-incremental achievement.");
-                                callback.Invoke(false);
-                            }
-                        }
-
-                        return;
+                        isIncremental = ach[i].IsIncremental;
+                        curSteps = ach[i].CurrentSteps;
+                        totalSteps = ach[i].TotalSteps;
+                        break;
                     }
                 }
 
-                // Achievement not found
-                GooglePlayGames.OurUtils.Logger.e("Unable to locate achievement " + achievementID);
-                callback.Invoke(false);
+
+                GooglePlayGames.OurUtils.Logger.d("Achievement " + achievementID + " is " +
+                    (isIncremental ? "INCREMENTAL" : "STANDARD"));
+
+                if (isIncremental)
+                {
+                    GooglePlayGames.OurUtils.Logger.d("Progress " + progress +
+                        " interpreted as percentage.");
+
+                    // what's the current percentage?
+                    double currentPercent = 0.0;
+                    if (totalSteps > 0)
+                    {
+                        currentPercent = ((double) curSteps / (double) totalSteps) * 100.0;
+                    }
+
+                    // are we reporting completed?
+                    if (progress >= 100.0)
+                    {
+                        // report 100% means asking to unlock the achievement.
+                        GooglePlayGames.OurUtils.Logger.d(
+                            "Progress " + progress + " interpreted as UNLOCK.");
+                        mClient.UnlockAchievement(achievementID, callback);
+                    }
+                    else
+                    {
+                        // we are reporting a percentage. How many steps does that mean?
+                        // note that we need to report the INCREMENT, not the new total.
+                        int steps = (int) (progress / 100.0 * totalSteps);
+                        int increment = steps - curSteps;
+                        GooglePlayGames.OurUtils.Logger.d("Steps is " + steps + ", current is " +
+                            curSteps + ". Increment is " + increment);
+                        if (increment > 0)
+                        {
+                            mClient.IncrementAchievement(achievementID, increment, callback);
+                        }
+                    }
+                }
+                else
+                {
+                    // standard achievement
+                    if (progress >= 100.0)
+                    {
+                        // unlock
+                        GooglePlayGames.OurUtils.Logger.d(
+                            "Progress " + progress + " interpreted as UNLOCK.");
+                        mClient.UnlockAchievement(achievementID, callback);
+                    }
+                    else
+                    {
+                        // not enough progress to unlock, so we reveal it
+                        GooglePlayGames.OurUtils.Logger.d(
+                            "Progress " + progress + " not enough to unlock. Revealing.");
+                        mClient.RevealAchievement(achievementID, callback);
+                    }
+                }
             });
         }
 
-        internal static int progressToSteps(double progress, int totalSteps) {
-            return (progress >= 100.0) ? totalSteps : (int) (progress * totalSteps / 100.0);
-        }
-
         /// <summary>
-        /// Reveals the achievement with the passed identifier. This is a Play Games extension of the ISocialPlatform API.
+        /// Reveals the achievement specified by ID. Equivalent to calling
+        /// <see cref="ReportProgress" /> with progress 0.0.
         /// </summary>
-        /// <remarks>If the operation succeeds, the callback
-        /// will be invoked on the game thread with <code>true</code>. If the operation fails, the
-        /// callback will be invoked with <code>false</code>. This operation will immediately fail if
-        /// the user is not authenticated (i.e. the callback will immediately be invoked with
-        /// <code>false</code>). If the achievement is already in a revealed state, this call will
-        /// succeed immediately.
-        /// </remarks>
         /// <param name='achievementID'>
-        /// The ID of the achievement to increment. This can be a raw Google Play
-        /// Games achievement ID (alphanumeric string), or an alias that was previously configured
-        /// by a call to <see cref="AddIdMapping" />.
+        /// Achievement identifier. This may be a raw Google Play Games achievement ID
+        /// or an alias configured via <see cref="AddIdMapping" />.
         /// </param>
         /// <param name='callback'>
-        /// The callback to call to report the success or failure of the operation. The callback
-        /// will be called with <c>true</c> to indicate success or <c>false</c> for failure.
+        /// Callback invoked when the operation completes. <c>true</c> indicates success,
+        /// <c>false</c> indicates failure.
         /// </param>
         public void RevealAchievement(string achievementID, Action<bool> callback = null)
         {
@@ -580,30 +613,22 @@ namespace GooglePlayGames
             }
 
             // map ID, if it's in the dictionary
-            GooglePlayGames.OurUtils.Logger.d(
-                "RevealAchievement: " + achievementID);
+            GooglePlayGames.OurUtils.Logger.d("RevealAchievement: " + achievementID);
             achievementID = MapId(achievementID);
             mClient.RevealAchievement(achievementID, callback);
         }
 
         /// <summary>
-        /// Unlocks the achievement with the passed identifier. This is a Play Games extension of the ISocialPlatform API.
+        /// Unlocks the achievement specified by ID. Equivalent to calling
+        /// <see cref="ReportProgress" /> with progress 100.0.
         /// </summary>
-        /// <remarks>If the operation succeeds, the callback
-        /// will be invoked on the game thread with <code>true</code>. If the operation fails, the
-        /// callback will be invoked with <code>false</code>. This operation will immediately fail if
-        /// the user is not authenticated (i.e. the callback will immediately be invoked with
-        /// <code>false</code>). If the achievement is already unlocked, this call will
-        /// succeed immediately.
-        /// </remarks>
         /// <param name='achievementID'>
-        /// The ID of the achievement to increment. This can be a raw Google Play
-        /// Games achievement ID (alphanumeric string), or an alias that was previously configured
-        /// by a call to <see cref="AddIdMapping" />.
+        /// Achievement identifier. This may be a raw Google Play Games achievement ID
+        /// or an alias configured via <see cref="AddIdMapping" />.
         /// </param>
         /// <param name='callback'>
-        /// The callback to call to report the success or failure of the operation. The callback
-        /// will be called with <c>true</c> to indicate success or <c>false</c> for failure.
+        /// Callback invoked when the operation completes. <c>true</c> indicates success,
+        /// <c>false</c> indicates failure.
         /// </param>
         public void UnlockAchievement(string achievementID, Action<bool> callback = null)
         {
@@ -620,19 +645,20 @@ namespace GooglePlayGames
             }
 
             // map ID, if it's in the dictionary
-            GooglePlayGames.OurUtils.Logger.d(
-                "UnlockAchievement: " + achievementID);
+            GooglePlayGames.OurUtils.Logger.d("UnlockAchievement: " + achievementID);
             achievementID = MapId(achievementID);
             mClient.UnlockAchievement(achievementID, callback);
         }
 
         /// <summary>
-        /// Increments an achievement. This is a Play Games extension of the ISocialPlatform API.
+        /// Increments the achievement specified by ID. This is only applicable to
+        /// incremental achievements. For standard achievements, this call is equivalent
+        /// to <see cref="UnlockAchievement" />. If the achievement is already revealed
+        /// or unlocked, this call is ignored.
         /// </summary>
         /// <param name='achievementID'>
-        /// The ID of the achievement to increment. This can be a raw Google Play
-        /// Games achievement ID (alphanumeric string), or an alias that was previously configured
-        /// by a call to <see cref="AddIdMapping" />.
+        /// Achievement identifier. This may be a raw Google Play Games achievement ID
+        /// or an alias configured via <see cref="AddIdMapping" />.
         /// </param>
         /// <param name='steps'>
         /// The number of steps to increment the achievement by.
@@ -664,10 +690,10 @@ namespace GooglePlayGames
 
         /// <summary>
         /// Set an achievement to have at least the given number of steps completed.
-        /// Calling this method while the achievement already has more steps than
-        /// the provided value is a no-op. Once the achievement reaches the
-        /// maximum number of steps, the achievement is automatically unlocked,
-        /// and any further mutation operations are ignored.
+        /// Calling this method with steps less than the current number of steps is
+        /// ignored. If the number of steps is greater than the maximum number of steps,
+        /// the achievement is automatically unlocked, and any further mutation operations
+        /// are ignored.
         /// </summary>
         /// <param name='achievementID'>
         /// The ID of the achievement to increment. This can be a raw Google Play
@@ -706,7 +732,9 @@ namespace GooglePlayGames
         /// Loads the Achievement descriptions.
         /// </summary>
         /// <param name="callback">The callback to receive the descriptions</param>
+#pragma warning disable 0618 // Deprecated Unity APIs
         public void LoadAchievementDescriptions(Action<IAchievementDescription[]> callback)
+#pragma warning restore 0618
         {
             if (!IsAuthenticated())
             {
@@ -722,7 +750,9 @@ namespace GooglePlayGames
 
             mClient.LoadAchievements(ach =>
             {
+#pragma warning disable 0618 // Deprecated Unity APIs
                 IAchievementDescription[] data = new IAchievementDescription[ach.Length];
+#pragma warning restore 0618
                 for (int i = 0; i < data.Length; i++)
                 {
                     data[i] = new PlayGamesAchievement(ach[i]);
@@ -736,7 +766,9 @@ namespace GooglePlayGames
         /// Loads the achievement state for the current user.
         /// </summary>
         /// <param name="callback">The callback to receive the achievements</param>
+#pragma warning disable 0618 // Deprecated Unity APIs
         public void LoadAchievements(Action<IAchievement[]> callback)
+#pragma warning restore 0618
         {
             if (!IsAuthenticated())
             {
@@ -748,7 +780,9 @@ namespace GooglePlayGames
 
             mClient.LoadAchievements(ach =>
             {
+#pragma warning disable 0618 // Deprecated Unity APIs
                 IAchievement[] data = new IAchievement[ach.Length];
+#pragma warning restore 0618
                 for (int i = 0; i < data.Length; i++)
                 {
                     data[i] = new PlayGamesAchievement(ach[i]);
@@ -765,7 +799,9 @@ namespace GooglePlayGames
         /// <returns>
         /// The achievement object.
         /// </returns>
+#pragma warning disable 0618 // Deprecated Unity APIs
         public IAchievement CreateAchievement()
+#pragma warning restore 0618
         {
             return new PlayGamesAchievement();
         }
@@ -843,14 +879,18 @@ namespace GooglePlayGames
         /// </remarks>
         /// <param name="leaderboardId">Leaderboard Id</param>
         /// <param name="callback">Callback to invoke when completed.</param>
+#pragma warning disable 0618 // Deprecated Unity APIs
         public void LoadScores(string leaderboardId, Action<IScore[]> callback)
+#pragma warning restore 0618
         {
             LoadScores(
                 leaderboardId,
                 LeaderboardStart.PlayerCentered,
                 mClient.LeaderboardMaxResults(),
                 LeaderboardCollection.Public,
+#pragma warning disable 0618 // Deprecated Unity APIs
                 LeaderboardTimeSpan.AllTime,
+#pragma warning restore 0618
                 (scoreData) => callback(scoreData.Scores));
         }
 
@@ -865,12 +905,16 @@ namespace GooglePlayGames
         /// <param name="collection">Collection. social or public</param>
         /// <param name="timeSpan">Time span. daily, weekly, all-time</param>
         /// <param name="callback">Callback to invoke when completed.</param>
+#pragma warning disable 0618 // Deprecated Unity APIs
         public void LoadScores(
             string leaderboardId,
             LeaderboardStart start,
+#pragma warning restore 0618
             int rowCount,
             LeaderboardCollection collection,
+#pragma warning disable 0618 // Deprecated Unity APIs
             LeaderboardTimeSpan timeSpan,
+#pragma warning restore 0618
             Action<LeaderboardScoreData> callback)
         {
             if (!IsAuthenticated())
@@ -882,24 +926,17 @@ namespace GooglePlayGames
                 return;
             }
 
-            mClient.LoadScores(
-                leaderboardId,
-                start,
-                rowCount,
-                collection,
-                timeSpan,
-                callback);
+            leaderboardId = MapId(leaderboardId);
+            mClient.LoadScores(leaderboardId, start, rowCount, collection, timeSpan, callback);
         }
 
         /// <summary>
-        /// Loads more scores. This call may fail when trying to load friends with
-        /// ResponseCode.ResolutionRequired if the user has not share the friends list with the game. In this case, use
-        /// AskForLoadFriendsResolution to request access.
+        /// Loads the more scores. Use the LeaderboardScoreData returned from a previous call
+        /// to LoadScores.
         /// </summary>
-        /// <remarks>This is used to load the next "page" of scores. </remarks>
-        /// <param name="token">Token used to recording the loading.</param>
+        /// <param name="token">Token used to identify the next page of scores.</param>
         /// <param name="rowCount">Row count.</param>
-        /// <param name="callback">Callback invoked when complete.</param>
+        /// <param name="callback">Callback.</param>
         public void LoadMoreScores(
             ScorePageToken token,
             int rowCount,
@@ -908,10 +945,9 @@ namespace GooglePlayGames
             if (!IsAuthenticated())
             {
                 GooglePlayGames.OurUtils.Logger.e("LoadMoreScores can only be called after authentication.");
-                callback(
-                    new LeaderboardScoreData(
-                        token.LeaderboardId,
-                        ResponseStatus.NotAuthorized));
+                callback(new LeaderboardScoreData(
+                    token.LeaderboardId,
+                    ResponseStatus.NotAuthorized));
                 return;
             }
 
@@ -919,18 +955,20 @@ namespace GooglePlayGames
         }
 
         /// <summary>
-        /// Returns a leaderboard object that can be configured to
-        /// load scores.
+        /// Creates a leaderboard object. This can be used to interact with leaderboards.
         /// </summary>
-        /// <returns>The leaderboard object.</returns>
+        /// <returns>
+        /// The leaderboard object.
+        /// </returns>
+#pragma warning disable 0618 // Deprecated Unity APIs
         public ILeaderboard CreateLeaderboard()
+#pragma warning restore 0618
         {
             return new PlayGamesLeaderboard(mDefaultLbUi);
         }
 
         /// <summary>
-        /// Shows the standard Google Play Games achievements user interface,
-        /// which allows the player to browse their achievements.
+        /// Shows the standard achievements UI.
         /// </summary>
         public void ShowAchievementsUI()
         {
@@ -938,11 +976,9 @@ namespace GooglePlayGames
         }
 
         /// <summary>
-        /// Shows the standard Google Play Games achievements user interface,
-        /// which allows the player to browse their achievements.
+        /// Shows the standard achievements UI.
         /// </summary>
-        /// <param name="callback">If non-null, the callback is invoked when
-        /// the achievement UI is dismissed</param>
+        /// <param name="callback">Callback invoked when the UI is dismissed.</param>
         public void ShowAchievementsUI(Action<UIStatus> callback)
         {
             if (!IsAuthenticated())
@@ -951,91 +987,93 @@ namespace GooglePlayGames
                 return;
             }
 
-            GooglePlayGames.OurUtils.Logger.d("ShowAchievementsUI callback is " + callback);
             mClient.ShowAchievementsUI(callback);
         }
 
         /// <summary>
-        /// Shows the standard Google Play Games leaderboards user interface,
-        /// which allows the player to browse their leaderboards. If you have
-        /// configured a specific leaderboard as the default through a call to
-        /// <see cref="SetDefaultLeaderboardForUI" />, the UI will show that
-        /// specific leaderboard only. Otherwise, a list of all the leaderboards
-        /// will be shown.
+        /// Shows the standard leaderboard UI for the given leaderboard ID.
         /// </summary>
+        /// <remarks> If leaderboardId is null, it shows the list of all leaderboards.
+        /// </remarks>
         public void ShowLeaderboardUI()
         {
-            GooglePlayGames.OurUtils.Logger.d("ShowLeaderboardUI with default ID");
-            ShowLeaderboardUI(MapId(mDefaultLbUi), null);
+            ShowLeaderboardUI(null);
         }
 
         /// <summary>
-        /// Shows the standard Google Play Games leaderboard UI for the given
-        /// leaderboard.
+        /// Shows the standard leaderboard UI for the given leaderboard ID.
         /// </summary>
+        /// <remarks> If leaderboardId is null, it shows the list of all leaderboards.
+        /// </remarks>
         /// <param name='leaderboardId'>
-        /// The ID of the leaderboard to display. This may be a raw
-        /// Google Play Games leaderboard ID or an alias configured through a call to
-        /// <see cref="AddIdMapping" />.
+        /// Leaderboard identifier. This may be a raw Google Play Games leaderboard ID
+        /// or an alias configured via <see cref="AddIdMapping" />. If null, shows the list
+        /// of all leaderboards.
         /// </param>
         public void ShowLeaderboardUI(string leaderboardId)
         {
-            if (leaderboardId != null)
-            {
-                leaderboardId = MapId(leaderboardId);
-            }
-
-            ShowLeaderboardUI(leaderboardId, LeaderboardTimeSpan.AllTime, null);
+            ShowLeaderboardUI(leaderboardId, null);
         }
 
         /// <summary>
-        /// Shows the leaderboard UI and calls the specified callback upon
-        /// completion.
+        /// Shows the standard leaderboard UI for the given leaderboard ID.
         /// </summary>
-        /// <param name="leaderboardId">leaderboard ID, can be null meaning all leaderboards.</param>
-        /// <param name="callback">Callback to call.  If null, nothing is called.</param>
+        /// <remarks> If leaderboardId is null, it shows the list of all leaderboards.
+        /// </remarks>
+        /// <param name='leaderboardId'>
+        /// Leaderboard identifier. This may be a raw Google Play Games leaderboard ID
+        /// or an alias configured via <see cref="AddIdMapping" />. If null, shows the list
+        /// of all leaderboards.
+        /// </param>
+        /// <param name="callback">Callback invoked when the UI is dismissed.</param>
         public void ShowLeaderboardUI(string leaderboardId, Action<UIStatus> callback)
         {
+#pragma warning disable 0618 // Deprecated Unity APIs
             ShowLeaderboardUI(leaderboardId, LeaderboardTimeSpan.AllTime, callback);
+#pragma warning restore 0618
         }
 
         /// <summary>
-        /// Shows the leaderboard UI and calls the specified callback upon
-        /// completion.
+        /// Shows the standard leaderboard UI for the given leaderboard ID and time span.
         /// </summary>
-        /// <param name="leaderboardId">leaderboard ID, can be null meaning all leaderboards.</param>
-        /// <param name="span">Timespan to display scores in the leaderboard.</param>
-        /// <param name="callback">Callback to call.  If null, nothing is called.</param>
+        /// <remarks> If leaderboardId is null, it shows the list of all leaderboards.
+        /// </remarks>
+        /// <param name='leaderboardId'>
+        /// Leaderboard identifier. This may be a raw Google Play Games leaderboard ID
+        /// or an alias configured via <see cref="AddIdMapping" />. If null, shows the list
+        /// of all leaderboards.
+        /// </param>
+        /// <param name="span">The time span to display</param>
+        /// <param name="callback">Callback invoked when the UI is dismissed.</param>
+#pragma warning disable 0618 // Deprecated Unity APIs
         public void ShowLeaderboardUI(
             string leaderboardId,
             LeaderboardTimeSpan span,
+#pragma warning restore 0618
             Action<UIStatus> callback)
         {
             if (!IsAuthenticated())
             {
                 GooglePlayGames.OurUtils.Logger.e("ShowLeaderboardUI can only be called after authentication.");
-                if (callback != null)
-                {
-                    callback(UIStatus.NotAuthorized);
-                }
-
                 return;
             }
 
-            GooglePlayGames.OurUtils.Logger.d("ShowLeaderboardUI, lbId=" +
-                                              leaderboardId + " callback is " + callback);
-            mClient.ShowLeaderboardUI(leaderboardId, span, callback);
+            string lbId = leaderboardId == null ? null : MapId(leaderboardId);
+#pragma warning disable 0618 // Deprecated Unity APIs
+            mClient.ShowLeaderboardUI(lbId, span, callback);
+#pragma warning restore 0618
         }
 
         /// <summary>
-        /// Sets the default leaderboard for the leaderboard UI. After calling this
-        /// method, a call to <see cref="ShowLeaderboardUI" /> will show only the specified
-        /// leaderboard instead of showing the list of all leaderboards.
+        /// Sets the default leaderboard for the leaderboard UI.
         /// </summary>
+        /// <remarks> After calling this method, subsequent calls to <see cref="ShowLeaderboardUI" />
+        /// without a leaderboard ID parameter will show the specified leaderboard instead
+        /// of the list of all leaderboards.
+        /// </remarks>
         /// <param name='lbid'>
-        /// The ID of the leaderboard to display on the default UI. This may be a raw
-        /// Google Play Games leaderboard ID or an alias configured through a call to
-        /// <see cref="AddIdMapping" />.
+        /// The ID of the leaderboard to show by default. This may be a raw Google Play Games
+        /// leaderboard ID or an alias configured via <see cref="AddIdMapping" />.
         /// </param>
         public void SetDefaultLeaderboardForUI(string lbid)
         {
@@ -1049,25 +1087,18 @@ namespace GooglePlayGames
         }
 
         /// <summary>
-        /// Loads the friends that also play this game.  See loadConnectedPlayers.
+        /// Loads the friends of the authenticated user.
         /// </summary>
-        /// <remarks>This is a callback variant of LoadFriends.  When completed,
-        /// the friends list set in the user object, so they can accessed via the
-        /// friends property as needed.
-        /// </remarks>
-        /// <param name="user">The current local user</param>
+        /// <param name="user">The user to load friends for.</param>
         /// <param name="callback">Callback invoked when complete.</param>
+#pragma warning disable 0618 // Deprecated Unity APIs
         public void LoadFriends(ILocalUser user, Action<bool> callback)
+#pragma warning restore 0618
         {
             if (!IsAuthenticated())
             {
-                GooglePlayGames.OurUtils.Logger.e(
-                    "LoadScores can only be called after authentication.");
-                if (callback != null)
-                {
-                    callback(false);
-                }
-
+                GooglePlayGames.OurUtils.Logger.e("LoadScores can only be called after authentication.");
+                callback(false);
                 return;
             }
 
@@ -1075,76 +1106,91 @@ namespace GooglePlayGames
         }
 
         /// <summary>
-        /// Loads the leaderboard based on the constraints in the leaderboard
-        /// object.
+        /// Loads the scores for the specified leaderboard.
         /// </summary>
-        /// <param name="board">The leaderboard object.  This is created by
-        /// calling CreateLeaderboard(), and then initialized appropriately.</param>
+        /// <param name="board">The leaderboard to load scores for.</param>
         /// <param name="callback">Callback invoked when complete.</param>
+#pragma warning disable 0618 // Deprecated Unity APIs
         public void LoadScores(ILeaderboard board, Action<bool> callback)
+#pragma warning restore 0618
         {
             if (!IsAuthenticated())
             {
                 GooglePlayGames.OurUtils.Logger.e("LoadScores can only be called after authentication.");
-                if (callback != null)
-                {
-                    callback(false);
-                }
-
+                callback(false);
                 return;
             }
 
-            LeaderboardTimeSpan timeSpan;
-            switch (board.timeScope)
+            callback = ToOnGameThread(callback);
+#pragma warning disable 0618 // Deprecated Unity APIs
+            PlayGamesLeaderboard pgBoard = board as PlayGamesLeaderboard;
+#pragma warning restore 0618
+            if (pgBoard == null)
             {
-                case TimeScope.AllTime:
-                    timeSpan = LeaderboardTimeSpan.AllTime;
-                    break;
-                case TimeScope.Week:
-                    timeSpan = LeaderboardTimeSpan.Weekly;
-                    break;
-                case TimeScope.Today:
-                    timeSpan = LeaderboardTimeSpan.Daily;
-                    break;
-                default:
-                    timeSpan = LeaderboardTimeSpan.AllTime;
-                    break;
+                GooglePlayGames.OurUtils.Logger.e("LoadScores can only be called with PlayGamesLeaderboard object");
+                callback(false);
+                return;
             }
 
-            ((PlayGamesLeaderboard) board).loading = true;
-            GooglePlayGames.OurUtils.Logger.d("LoadScores, board=" + board +
-                                              " callback is " + callback);
-            mClient.LoadScores(
+            LeaderboardCollection collection = LeaderboardCollection.Public;
+#pragma warning disable 0618 // Deprecated Unity APIs
+            switch (board.userScope)
+#pragma warning restore 0618
+            {
+#pragma warning disable 0618 // Deprecated Unity APIs
+                case UserScope.FriendsOnly:
+#pragma warning restore 0618
+                    collection = LeaderboardCollection.Social;
+                    break;
+#pragma warning disable 0618 // Deprecated Unity APIs
+                case UserScope.Global:
+#pragma warning restore 0618
+                    collection = LeaderboardCollection.Public;
+                    break;
+                default:
+#pragma warning disable 0618 // Deprecated Unity APIs
+                    GooglePlayGames.OurUtils.Logger.e("UserScope not supported: " + board.userScope);
+#pragma warning restore 0618
+                    callback(false);
+                    return;
+            }
+
+            pgBoard.loading = true;
+#pragma warning disable 0618 // Deprecated Unity APIs
+            LoadScores(
                 board.id,
-                LeaderboardStart.PlayerCentered,
-                board.range.count > 0 ? board.range.count : mClient.LeaderboardMaxResults(),
-                board.userScope == UserScope.FriendsOnly ? LeaderboardCollection.Social : LeaderboardCollection.Public,
-                timeSpan,
-                (scoreData) => HandleLoadingScores(
-                    (PlayGamesLeaderboard) board, scoreData, callback));
+                board.range.from > 1 ? LeaderboardStart.TopScores : LeaderboardStart.PlayerCentered,
+                board.range.count,
+                collection,
+                ToLeaderboardTimeSpan(board.timeScope), // Fixed: Use helper method
+                (scoreData) => HandleLoadingScores(pgBoard, scoreData, callback));
+#pragma warning restore 0618
         }
 
         /// <summary>
-        /// Check if the leaderboard is currently loading.
+        /// Returns whether the specified leaderboard is currently loading.
         /// </summary>
-        /// <returns><c>true</c>, if loading was gotten, <c>false</c> otherwise.</returns>
-        /// <param name="board">The leaderboard to check for loading in progress</param>
+        /// <returns><c>true</c> if loading; otherwise, <c>false</c>.</returns>
+        /// <param name="board">Board.</param>
+#pragma warning disable 0618 // Deprecated Unity APIs
         public bool GetLoading(ILeaderboard board)
+#pragma warning restore 0618
         {
-            return board != null && board.loading;
+            if (board != null && board is PlayGamesLeaderboard)
+            {
+                return ((PlayGamesLeaderboard) board).loading;
+            }
+
+            return false;
         }
 
         /// <summary>
-        /// Shows the Player Profile UI for the given user identifier.
+        /// Shows the player profile comparison UI for the specified player ID.
         /// </summary>
-        /// <param name="userId">User Identifier.</param>
-        /// <param name="otherPlayerInGameName">
-        /// The game's own display name of the player referred to by userId.
-        /// </param>
-        /// <param name="currentPlayerInGameName">
-        /// The game's own display name of the current player.
-        /// </param>
-        /// <param name="callback">Callback invoked upon completion.</param>
+        /// <param name="userId">The ID of the player to show.</param>
+        /// <param name="otherPlayerInGameName">The name the other player is using in the game.</param>
+        /// <param name="currentPlayerInGameName">The name the current player is using in the game.</param>
+        /// <param name="callback">Callback invoked when the UI is dismissed.</param>
         public void ShowCompareProfileWithAlternativeNameHintsUI(string userId,
             string otherPlayerInGameName,
             string currentPlayerInGameName,
@@ -1154,25 +1200,18 @@ namespace GooglePlayGames
             {
                 GooglePlayGames.OurUtils.Logger.e(
                     "ShowCompareProfileWithAlternativeNameHintsUI can only be called after authentication.");
-                InvokeCallbackOnGameThread(callback, UIStatus.NotAuthorized);
-
                 return;
             }
 
-            GooglePlayGames.OurUtils.Logger.d(
-                "ShowCompareProfileWithAlternativeNameHintsUI, userId=" + userId + " callback is " +
-                callback);
             mClient.ShowCompareProfileWithAlternativeNameHintsUI(userId, otherPlayerInGameName,
                 currentPlayerInGameName, callback);
         }
 
         /// <summary>
-        /// Returns if the user has allowed permission for the game to access the friends list.
+        /// Gets the visibility of the friends list.
         /// </summary>
-        /// <param name="forceReload">If true, this call will clear any locally cached data and
-        /// attempt to fetch the latest data from the server. Normally, this should be set to {@code
-        /// false} to gain advantages of data caching.</param>
-        /// <param name="callback">Callback invoked upon completion.</param>
+        /// <param name="forceReload">If true, forces a reload of the data.</param>
+        /// <param name="callback">Callback invoked when complete.</param>
         public void GetFriendsListVisibility(bool forceReload,
             Action<FriendsListVisibilityStatus> callback)
         {
@@ -1180,36 +1219,34 @@ namespace GooglePlayGames
             {
                 GooglePlayGames.OurUtils.Logger.e(
                     "GetFriendsListVisibility can only be called after authentication.");
-                InvokeCallbackOnGameThread(callback, FriendsListVisibilityStatus.NotAuthorized);
+                callback(FriendsListVisibilityStatus.NotAuthorized);
                 return;
             }
 
-            GooglePlayGames.OurUtils.Logger.d("GetFriendsListVisibility, callback is " + callback);
             mClient.GetFriendsListVisibility(forceReload, callback);
         }
 
         /// <summary>
-        /// Shows the appropriate platform-specific friends sharing UI.
-        /// <param name="callback">The callback to invoke when complete. If null,
-        /// no callback is called. </param>
+        /// Asks the user for permission to load the friends list.
         /// </summary>
+        /// <param name="callback">Callback invoked when the UI is dismissed.</param>
         public void AskForLoadFriendsResolution(Action<UIStatus> callback)
         {
             if (!IsAuthenticated())
             {
                 GooglePlayGames.OurUtils.Logger.e(
                     "AskForLoadFriendsResolution can only be called after authentication.");
-                InvokeCallbackOnGameThread(callback, UIStatus.NotAuthorized);
+                callback(UIStatus.NotAuthorized);
                 return;
             }
 
-            GooglePlayGames.OurUtils.Logger.d("AskForLoadFriendsResolution callback is " + callback);
             mClient.AskForLoadFriendsResolution(callback);
         }
 
         /// <summary>
-        /// Gets status of the last call to load friends.
+        /// Gets the last load friends status.
         /// </summary>
+        /// <returns>The last load friends status.</returns>
         public LoadFriendsStatus GetLastLoadFriendsStatus()
         {
             if (!IsAuthenticated())
@@ -1223,19 +1260,11 @@ namespace GooglePlayGames
         }
 
         /// <summary>
-        /// Loads the first page of the user's friends
+        /// Loads the friends list.
         /// </summary>
-        /// <param name="pageSize">
-        /// The number of entries to request for this initial page. Note that if cached
-        /// data already exists, the returned buffer may contain more than this size, but it is
-        /// guaranteed to contain at least this many if the collection contains enough records.
-        /// </param>
-        /// <param name="forceReload">
-        /// If true, this call will clear any locally cached data and attempt to
-        /// fetch the latest data from the server. This would commonly be used for something like a
-        /// user-initiated refresh. Normally, this should be set to {@code false} to gain advantages
-        /// of data caching.</param> <param name="callback">Callback invoked upon
-        /// completion.</param>
+        /// <param name="pageSize">Page size.</param>
+        /// <param name="forceReload">If set to <c>true</c> force reload.</param>
+        /// <param name="callback">Callback.</param>
         public void LoadFriends(int pageSize, bool forceReload,
             Action<LoadFriendsStatus> callback)
         {
@@ -1243,7 +1272,7 @@ namespace GooglePlayGames
             {
                 GooglePlayGames.OurUtils.Logger.e(
                     "LoadFriends can only be called after authentication.");
-                InvokeCallbackOnGameThread(callback, LoadFriendsStatus.NotAuthorized);
+                callback(LoadFriendsStatus.NotAuthorized);
                 return;
             }
 
@@ -1251,21 +1280,17 @@ namespace GooglePlayGames
         }
 
         /// <summary>
-        /// Loads the friends list page
+        /// Loads more friends.
         /// </summary>
-        /// <param name="pageSize">
-        /// The number of entries to request for this initial page. Note that if cached
-        /// data already exists, the returned buffer may contain more than this size, but it is
-        /// guaranteed to contain at least this many if the collection contains enough records.
-        /// </param>
-        /// <param name="callback"></param>
+        /// <param name="pageSize">Page size.</param>
+        /// <param name="callback">Callback.</param>
         public void LoadMoreFriends(int pageSize, Action<LoadFriendsStatus> callback)
         {
             if (!IsAuthenticated())
             {
                 GooglePlayGames.OurUtils.Logger.e(
                     "LoadMoreFriends can only be called after authentication.");
-                InvokeCallbackOnGameThread(callback, LoadFriendsStatus.NotAuthorized);
+                callback(LoadFriendsStatus.NotAuthorized);
                 return;
             }
 
@@ -1286,7 +1311,9 @@ namespace GooglePlayGames
             bool ok = board.SetFromData(scoreData);
             if (ok && !board.HasAllScores() && scoreData.NextPageToken != null)
             {
+#pragma warning disable 0618 // Deprecated Unity APIs
                 int rowCount = board.range.count - board.ScoreCount;
+#pragma warning restore 0618
 
                 // need to load more scores
                 mClient.LoadMoreScores(
@@ -1305,12 +1332,16 @@ namespace GooglePlayGames
         /// Internal implmentation of getFriends.Gets the friends.
         /// </summary>
         /// <returns>The friends.</returns>
+#pragma warning disable 0618 // Deprecated Unity APIs
         internal IUserProfile[] GetFriends()
+#pragma warning restore 0618
         {
             if (!IsAuthenticated())
             {
                 GooglePlayGames.OurUtils.Logger.d("Cannot get friends when not authenticated!");
+#pragma warning disable 0618 // Deprecated Unity APIs
                 return new IUserProfile[0];
+#pragma warning restore 0618
             }
 
             return mClient.GetFriends();
@@ -1349,7 +1380,7 @@ namespace GooglePlayGames
                 return;
             }
 
-            PlayGamesHelperObject.RunOnGameThread(() => { callback(data); });
+            PlayGamesHelperObject.RunOnGameThread(() => callback(data));
         }
 
         private static Action<T> ToOnGameThread<T>(Action<T> toConvert)
@@ -1359,7 +1390,24 @@ namespace GooglePlayGames
                 return delegate { };
             }
 
-            return (val) => PlayGamesHelperObject.RunOnGameThread(() => toConvert(val));
+            return (val) => InvokeCallbackOnGameThread(toConvert, val);
+        }
+
+        // Helper to convert TimeScope
+#pragma warning disable 0618 // Deprecated Unity APIs
+        private static GooglePlayGames.BasicApi.LeaderboardTimeSpan ToLeaderboardTimeSpan (UnityEngine.SocialPlatforms.TimeScope scope)
+#pragma warning restore 0618
+        {
+#pragma warning disable 0618 // Deprecated Unity APIs
+            switch (scope)
+            {
+                case UnityEngine.SocialPlatforms.TimeScope.Week:
+                    return GooglePlayGames.BasicApi.LeaderboardTimeSpan.Weekly;
+                case UnityEngine.SocialPlatforms.TimeScope.AllTime:
+                default:
+                    return GooglePlayGames.BasicApi.LeaderboardTimeSpan.AllTime;
+            }
+#pragma warning restore 0618
         }
     }
 }

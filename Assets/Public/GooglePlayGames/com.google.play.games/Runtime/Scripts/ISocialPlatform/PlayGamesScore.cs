@@ -24,7 +24,9 @@ namespace GooglePlayGames
     /// <summary>
     /// Represents a Google Play Games score that can be sent to a leaderboard.
     /// </summary>
+#pragma warning disable 0618 // Deprecated Unity APIs
     public class PlayGamesScore : IScore
+#pragma warning restore 0618
     {
         private string mLbId = null;
         private long mValue = 0;
@@ -41,7 +43,7 @@ namespace GooglePlayGames
             mLbId = leaderboardID;
             this.mRank = rank;
             this.mPlayerId = playerId;
-            this.mValue = (long) value;
+            this.mValue = (long)value;
             this.mMetadata = metadata;
         }
 
@@ -108,7 +110,7 @@ namespace GooglePlayGames
         /// </summary>
         public int rank
         {
-            get { return (int) mRank; }
+            get { return (int)mRank; }
         }
 
         /// <summary>

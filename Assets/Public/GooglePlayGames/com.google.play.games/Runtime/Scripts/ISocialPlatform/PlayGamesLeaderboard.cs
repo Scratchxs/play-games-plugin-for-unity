@@ -23,9 +23,12 @@ namespace GooglePlayGames
     using UnityEngine;
     using UnityEngine.SocialPlatforms;
 
+#pragma warning disable 0618 // Deprecated Unity APIs
     public class PlayGamesLeaderboard : ILeaderboard
     {
         private string mId;
+#pragma warning restore 0618
+#pragma warning disable 0618 // Deprecated Unity APIs
         private UserScope mUserScope;
         private Range mRange;
         private TimeScope mTimeScope;
@@ -33,6 +36,7 @@ namespace GooglePlayGames
         private bool mLoading;
 
         private IScore mLocalUserScore;
+#pragma warning restore 0618
         private uint mMaxRange;
         private List<PlayGamesScore> mScoreList = new List<PlayGamesScore>();
         private string mTitle;
@@ -66,27 +70,35 @@ namespace GooglePlayGames
             set { mId = value; }
         }
 
+#pragma warning disable 0618 // Deprecated Unity APIs
         public UserScope userScope
         {
             get { return mUserScope; }
+#pragma warning restore 0618
             set { mUserScope = value; }
         }
 
+#pragma warning disable 0618 // Deprecated Unity APIs
         public Range range
         {
             get { return mRange; }
+#pragma warning restore 0618
             set { mRange = value; }
         }
 
+#pragma warning disable 0618 // Deprecated Unity APIs
         public TimeScope timeScope
         {
             get { return mTimeScope; }
+#pragma warning restore 0618
             set { mTimeScope = value; }
         }
 
+#pragma warning disable 0618 // Deprecated Unity APIs
         public IScore localUserScore
         {
             get { return mLocalUserScore; }
+#pragma warning restore 0618
         }
 
         public uint maxRange
@@ -94,9 +106,11 @@ namespace GooglePlayGames
             get { return mMaxRange; }
         }
 
+#pragma warning disable 0618 // Deprecated Unity APIs
         public IScore[] scores
         {
             get
+#pragma warning restore 0618
             {
                 PlayGamesScore[] arr = new PlayGamesScore[mScoreList.Count];
                 mScoreList.CopyTo(arr);
@@ -118,10 +132,12 @@ namespace GooglePlayGames
                 OurUtils.Logger.d("Setting leaderboard from: " + data);
                 SetMaxRange(data.ApproximateCount);
                 SetTitle(data.Title);
-                SetLocalUserScore((PlayGamesScore) data.PlayerScore);
+                SetLocalUserScore((PlayGamesScore)data.PlayerScore);
+#pragma warning disable 0618 // Deprecated Unity APIs
                 foreach (IScore score in data.Scores)
+#pragma warning restore 0618
                 {
-                    AddScore((PlayGamesScore) score);
+                    AddScore((PlayGamesScore)score);
                 }
 
                 mLoading = data.Scores.Length == 0 || HasAllScores();
@@ -132,7 +148,7 @@ namespace GooglePlayGames
 
         internal void SetMaxRange(ulong val)
         {
-            mMaxRange = (uint) val;
+            mMaxRange = (uint)val;
         }
 
         internal void SetTitle(string value)

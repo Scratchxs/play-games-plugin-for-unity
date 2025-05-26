@@ -1,8 +1,9 @@
 fileFormatVersion: 2
-guid: 0a6132672415643e8b1f16585785afe9
-timeCreated: 1504034459
-licenseType: Pro
+guid: 61e27ff79a1af4381a2d068d95d08bf2
+labels:
+- gvh
 TextScriptImporter:
+  externalObjects: {}
   userData: 
   assetBundleName: 
   assetBundleVariant: 

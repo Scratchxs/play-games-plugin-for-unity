@@ -148,9 +148,13 @@ namespace GooglePlayGames.Android
             }
         }
 
+#pragma warning disable 0618 // Deprecated Unity APIs
         internal static IUserProfile[] playersBufferToArray(AndroidJavaObject playersBuffer) {
+#pragma warning restore 0618
           int count = playersBuffer.Call<int>("getCount");
+#pragma warning disable 0618 // Deprecated Unity APIs
           IUserProfile[] users = new IUserProfile[count];
+#pragma warning restore 0618
           for (int i = 0; i < count; ++i) {
             using (var player = playersBuffer.Call<AndroidJavaObject>("get", i)) {
               users[i] = AndroidJavaConverter.ToPlayerProfile(player);

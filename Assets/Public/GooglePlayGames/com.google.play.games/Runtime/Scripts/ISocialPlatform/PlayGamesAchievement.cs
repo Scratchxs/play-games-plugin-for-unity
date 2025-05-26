@@ -32,7 +32,9 @@ namespace GooglePlayGames
     /// Represents a Google Play Games achievement. It can be used to report an achievement
     /// to the API, offering identical functionality as <see cref="PlayGamesPlatform.ReportProgress" />.
     /// </summary>
+#pragma warning disable 0618 // Deprecated Unity APIs
     internal class PlayGamesAchievement : IAchievement, IAchievementDescription
+#pragma warning restore 0618
     {
         private readonly ReportProgress mProgressCallback;
         private string mId = string.Empty;
@@ -76,7 +78,7 @@ namespace GooglePlayGames
                 if (ach.TotalSteps > 0)
                 {
                     this.mPercentComplete =
-                        ((double) ach.CurrentSteps / (double) ach.TotalSteps) * 100.0;
+                        ((double)ach.CurrentSteps / (double)ach.TotalSteps) * 100.0;
                 }
                 else
                 {
@@ -279,7 +281,7 @@ namespace GooglePlayGames
 
         public int points
         {
-            get { return (int) mPoints; }
+            get { return (int)mPoints; }
         }
     }
 }
