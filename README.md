@@ -1,117 +1,68 @@
-# Google Play Games plugin for Unity
-_Copyright (c) 2014 Google Inc. All rights reserved._
+This is a fork of the official Play Games Unity plugin.
+Except this one works.
 
-The Google Play Games plugin for Unity&reg; is an open-source project whose goal
-is to provide a plugin that allows game developers to integrate with
-the Google Play Games API from a game written in Unity&reg;. However, this project is
-not in any way endorsed or supervised by Unity Technologies.
+I fixed it because Unity 6 exists, and apparently nobody at Google noticed.
 
-_Unity&reg; is a trademark of Unity Technologies._
+This repo exists for one reason:
+My game broke. I fixed it. Maybe yours is broken too. You're welcome.
 
-_iOS is a trademark of Apple, Inc._
+Why This Exists
+The original plugin:
 
-## Downloads
+Uses deprecated Unity APIs
 
-Please download the package from the [Github release page](https://github.com/playgameservices/play-games-plugin-for-unity/releases).
+Assumes 2019.4 is still relevant
 
-## Overview
+Breaks on Unity 6 like a glass piano
 
-The Google Play Games plugin for Unity allows you to access the Google Play Games
-API through Unity's [social interface](http://docs.unity3d.com/Documentation/ScriptReference/Social.html).
-The plugin provides support for the
-following features of the Google Play Games API:<br/>
+Has 700+ open issues a thriving monument to abandonment
 
-* sign in
-* friends
-* unlock/reveal/increment achievement
-* post score to leaderboard
-* cloud save read/write
-* show built-in achievement/leaderboards UI
-* events
-* [nearby connections](NEARBY.md)
+I:
 
-__NOTICE__: This version of the plugin no longer supports iOS.  Google Play games services for iOS is deprecated,
-and is not likely to function as expected. Do not use Google Play games
-services for iOS in new apps. See the [deprecation announcement](https://android-developers.googleblog.com/2017/04/focusing-our-google-play-games-services.html) blog post for more details.
+Got tired of warnings
 
-Features:
+Got tired of runtime crashes
 
-* easy GUI-oriented project setup (integrated into the Unity GUI)
-* no need to override/customize the player Activity
-* no need to override/customize AndroidManifest.xml
+Got tired of pretending Google maintains this
 
-## Documentation
+So I rewrote chunks, patched method calls, updated API usages, and cleaned up all the CS0618 spam.
+No duct tape. No band-aids. Just a working fork.
 
-For instructions on using the plugin, please refer to [this developer guide](https://developer.android.com/games/pgs/unity/unity-start).
+Changes
+Updated PlayerSettings.*(BuildTargetGroup.Android) ➜ NamedBuildTarget.Android
 
-For a sample application demonstrating how to use Google Play Games see [SmokeTest](https://github.com/playgameservices/play-games-plugin-for-unity/tree/master/Samples/SmokeTest) project;
+Removed calls to extinct enum members (PVRTC, etc.)
 
+Wrapped or replaced ~70 usages of deprecated interfaces like IUserProfile, IScore, IAchievement, etc.
 
-## Upgrading
+Ensured JNI signatures align with the actual AARs (because "guess and crash" isn't a feature)
 
-If you have already integrated your project with a previous version of the
-plugin and wish to upgrade to a new version, please refer to the
-[upgrade instructions](UPGRADING.txt).
+Runtime tested: login, achievement unlock, score submit – all verified on device
 
-## Retrieving server authentication codes ##
-In order to access Google APIs on a backend web server on behalf of the current
-player, you need to get an authentication code from the client application and
-pass this to your web server application.  This code can then be exchanged for
-an access token to make calls to the various APIs.
-For more details on this flow see: [Google Sign-In for Websites](https://developers.google.com/identity/sign-in/web/server-side-flow).
+What This Is Not
+A full rewrite
 
-To get the Server Auth code:
-1. Configure the web client Id of the web application linked to your game in the
-   Play Game Console.
-2. Call `PlayGamesClientConfiguration.Builder.RequestServerAuthCode(false)` when
-   creating the configuration.
-3. Call `PlayGamesPlatform.Instance.GetServerAuthCode()` once the player is authenticated.
-4. Pass this code to your server application.
+An official anything
 
-```csharp
-  PlayGamesPlatform.Instance.RequestServerSideAccess(
-    /* forceRefreshToken= */ false,
-    code -> {
-      // send code to server
-    });
-```
+A promise
 
-## Decreasing apk size
+License
+None.
+This is not a library. This is a therapy exercise that happens to compile.
+If you use this in your project and it helps you? Neat.
+If it breaks your build? That's still an upgrade from the original.
 
-It is possible to decrease the size of the Play Games Services Unity Plugin by removing code for the Play Games Services features that your game doesn’t use by using Proguard. Proguard will remove the Play Games Unity plugin code for features that are not used in your game, so your game ships with only the code that is needed and minimizes the size impact of using Play Games Services.
+How to Use
+Clone or download the .unitypackage.
+Import it into Unity 6.
+Profit (or at least, build successfully without scrolling through 150 warnings about ISocialPlatform).
 
-Additionally, it is possible to reduce the size of the entire Unity project using Unity’s [Managed Code Stripping](https://docs.unity3d.com/Manual/ManagedCodeStripping.html), which will compress your entire project.  This can be used in conjunction with Proguard.
+The Future™
+If Google ever updates the official plugin, I’ll probably ignore it.
+If something breaks in this version, feel free to open an issue.
+I might fix it, might not, dont know yet.
 
-### Play Games Services Proguard configuration
+End
 
-1. Go to `File > Build Settings > Player Settings` and click `Publishing Settings` section. Choose `Proguard` for `Minify > Release`. Then, enable `User Proguard File`. If you want the plugin to be proguarded for debug apks as well, you can choose `Proguard` for `Minify > Debug`.
-2. Copy the content of [the proguard configuration](scripts/proguard.txt) into `Assets/Plugins/Android/proguard-user.txt`.
-
-## (Advanced) Using the Plugin Without Overriding the Default Social Platform
-
-When you call `PlayGamesPlatform.Activate`, Google Play Games becomes your default social platform implementation, which means that static calls to methods in `Social` and `Social.Active` will be carried out by the Google Play Games plugin. This is the desired behavior for most games using the plugin.
-
-However, if for some reason you wish to keep the default implementation accessible (for example, to use it to submit achievements and leaderboards to a different social platform), you can use the Google Play Games plugin without overriding the default one. To do this:
-
-1. Do not call `PlayGamesPlatform.Activate`
-2. If `Xyz` is the name of a method you wish to call on the `Social` class, do not call `Social.Xyz`. Instead, call `PlayGamesPlatform.Instance.Xyz`
-3. Do not use `Social.Active` when interacting with Google Play Games. Instead, use `PlayGamesPlatform.Instance`.
-
-That way, you can even submit scores and achievements simultaneously to two or more social platforms:
-
-```csharp
-    // Submit achievement to original default social platform
-    Social.ReportProgress("MyAchievementIdHere", 100.0f, callback);
-
-    // Submit achievement to Google Play
-    PlayGamesPlatform.Instance.ReportProgress("MyGooglePlayAchievementIdHere", 100.0f, callback);
-```
-
-## Special Thanks
-
-This section lists people who have contributed to this project by writing code, improving documentation or fixing bugs.
-
-* [Dgizusse](https://github.com/Dgizusse) for figuring out that setting JAVA_HOME is necessary on Windows.
-* [antonlicht](https://github.com/antonlicht) for fixing a bug with the parameter type of showErrorDialog on the support library.
-* [pR0Ps](https://github.com/pR0Ps) for fixing an issue where OnAchievementsLoaded was not accepting an OPERATION_DEFERRED result code as a success.
-* [friikyeu](https://github.com/friikyeu) for helping debug [an issue](https://github.com/playgameservices/play-games-plugin-for-unity/issues/25) that caused API calls to be queued up rather than executed even when connected.
+Have fun. Or don’t.
+It’s still more functional than the original.
